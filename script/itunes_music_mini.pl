@@ -5,8 +5,6 @@ use Modern::Perl;
 
 use rlib;
 use App::iTunesMusicMini::Container qw(container);
-#use Encode;
-#use Encode::UTF8Mac;
 use File::Copy;
 use File::Path qw(make_path);
 use IO::All;
@@ -40,33 +38,40 @@ SCRIPT
 sub run {
     my $config = container('config');
 
-    #binmode STDOUT, ":utf8";
+    # playlist
+    my @rel = do {
+        my $itunes = Mac::iTunes->controller;
+        my @abs = @{get_track_filenames_in_playlist($itunes,$config->get->{playlist_name})};
+        @abs = grep { m/^@{[ $config->get->{itunes_media_music_main} ]}/ } @abs;
+        @abs = map { io($_)->pathname } @abs;
+        map { File::Spec->abs2rel($_, $config->get->{itunes_media_music_main}) } @abs;
+    };
 
-    my $itunes = Mac::iTunes->controller;
-
-    my %seen;
-
-    my @files = @{get_track_filenames_in_playlist($itunes,$config->get->{playlist_name})};
-    @files = grep { m/^@{[ $config->get->{itunes_media_music_main} ]}/ } @files;
-    #say 0+@files;
-    #@files = map { Encode::decode('utf-8-mac', $_) } @files;
-    for my $file1 (@files) {
-        my $file2 = File::Spec->catfile($config->get->{itunes_media_music_sub}, File::Spec->abs2rel($file1, $config->get->{itunes_media_music_main}));
-        unless ( -f $file2 ) {
-            my $dir = File::Spec->catdir((File::Spec->splitpath($file2))[0,1]);
+    # copy
+    for my $rel (@rel) {
+        my $external = File::Spec->catfile($config->get->{itunes_media_music_main}, $rel);
+        my $note     = File::Spec->catfile($config->get->{itunes_media_music_sub},  $rel);
+        unless ( -f $note ) {
+            my $dir = File::Spec->catdir((File::Spec->splitpath($note))[0,1]);
             unless ( -d $dir ) {
                 make_path($dir) or die $!;
             }
-            copy($file1, $file2) or die $!;
+            copy($external, $note) or die $!;
         }
-        $seen{$file2} = 1;
     }
 
-    for my $file (io($config->get->{itunes_media_music_sub})->All_Files) {
-        next if $file->filename =~ m/^\./;
-        unless ( $seen{$file} ) {
-            say "REMOVE: " . $file->pathname;
-        }
+    # delete
+    my @sub = map {
+        $_->abs2rel($config->get->{itunes_media_music_sub});
+    } grep { $_->filename !~ m/^\./ } io($config->get->{itunes_media_music_sub})->All_Files;
+    my @needless = do {
+        my %seen = map { uc($_) => 1 } @rel; # "Banco De Gaia" equal "Banco de Gaia".
+        map { $seen{uc($_)} ? () : $_ } @sub;
+    };
+    for (@needless) {
+        my $abs = File::Spec->catfile($config->get->{itunes_media_music_sub}, $_);
+        say "REMOVE: " . $abs;
+        unlink $abs;
     }
 }
 
