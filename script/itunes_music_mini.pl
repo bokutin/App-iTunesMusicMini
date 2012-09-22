@@ -43,7 +43,6 @@ sub run {
         my $itunes = Mac::iTunes->controller;
         my @abs = @{get_track_filenames_in_playlist($itunes,$config->get->{playlist_name})};
         @abs = grep { m/^@{[ $config->get->{itunes_media_music_main} ]}/ } @abs;
-        @abs = map { io($_)->pathname } @abs;
         map { File::Spec->abs2rel($_, $config->get->{itunes_media_music_main}) } @abs;
     };
 
