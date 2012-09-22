@@ -38,6 +38,8 @@ SCRIPT
 sub run {
     my $config = container('config');
 
+    my %count;
+
     # playlist
     my @rel = do {
         my $itunes = Mac::iTunes->controller;
@@ -56,6 +58,7 @@ sub run {
                 make_path($dir) or die $!;
             }
             copy($external, $note) or die $!;
+            $count{copied}++;
         }
     }
 
@@ -71,7 +74,11 @@ sub run {
         my $abs = File::Spec->catfile($config->get->{itunes_media_music_sub}, $_);
         say "REMOVE: " . $abs;
         unlink $abs;
+        $count{deleted}++;
     }
+
+    #
+    say sprintf("items: %d, copied: %d, deleted: %d", 0+@rel, $count{copied}//0, $count{deleted}//0);
 }
 
 run();
