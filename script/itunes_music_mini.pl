@@ -5,7 +5,7 @@ use Modern::Perl;
 
 use rlib;
 use App::iTunesMusicMini::Container qw(container);
-use File::Copy;
+use File::Copy::Recursive;
 use File::Path qw(make_path);
 use IO::All;
 use Mac::iTunes;
@@ -53,11 +53,7 @@ sub run {
         my $external = File::Spec->catfile($config->get->{itunes_media_music_main}, $rel);
         my $note     = File::Spec->catfile($config->get->{itunes_media_music_sub},  $rel);
         unless ( -f $note ) {
-            my $dir = File::Spec->catdir((File::Spec->splitpath($note))[0,1]);
-            unless ( -d $dir ) {
-                make_path($dir) or die $!;
-            }
-            copy($external, $note) or die $!;
+            fcopy($external, $note) or die $!;
             $count{copied}++;
         }
     }
