@@ -5,7 +5,7 @@ use Modern::Perl;
 
 use rlib;
 use App::iTunesMusicMini::Container qw(container);
-use File::Copy::Recursive;
+use File::Copy::Recursive qw(fcopy);
 use File::Path qw(make_path);
 use IO::All;
 use Mac::iTunes;
@@ -67,10 +67,16 @@ sub run {
         map { $seen{uc($_)} ? () : $_ } @sub;
     };
     for (@needless) {
-        my $abs = File::Spec->catfile($config->get->{itunes_media_music_sub}, $_);
-        say "REMOVE: " . $abs;
-        unlink $abs;
-        $count{deleted}++;
+        my $external = File::Spec->catfile($config->get->{itunes_media_music_main}, $_);
+        my $note     = File::Spec->catfile($config->get->{itunes_media_music_sub}, $_);
+        if ( -f $external ) {
+            say "REMOVE: " . $note;
+            unlink $note;
+            $count{deleted}++;
+        }
+        else {
+            say "SKIP: " . $note;
+        }
     }
 
     #
